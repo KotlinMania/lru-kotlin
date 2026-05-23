@@ -939,8 +939,14 @@ class LruCache<K : Any, V : Any> private constructor(
          * ```kotlin
          * val cache = LruCache.unbounded<Long, String>()
          * ```
+         *
+         * Marked `internal` because Swift Export cannot infer the type
+         * parameters from a no-argument generic factory and fails the
+         * `compileSwiftExportMainKotlinMacosArm64` bridge with
+         * `Cannot infer type for type parameter 'K' / 'V'`. Common Kotlin
+         * callers can keep using `LruCache.unbounded<K, V>()` directly.
          */
-        fun <K : Any, V : Any> unbounded(): LruCache<K, V> =
+        internal fun <K : Any, V : Any> unbounded(): LruCache<K, V> =
             LruCache(Int.MAX_VALUE, HashMap())
 
         private fun requirePositive(cap: Int): Int {
