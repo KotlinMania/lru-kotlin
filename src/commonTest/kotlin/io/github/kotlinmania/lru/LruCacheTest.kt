@@ -452,9 +452,11 @@ class LruCacheTest {
         run {
             val iter = cache.iter()
             assertEquals(3, iter.len())
+            assertEquals(3 to 3, iter.sizeHint())
             assertOptEqTuple(iter.next(), "c" to 3)
 
             assertEquals(2, iter.len())
+            assertEquals(2 to 2, iter.sizeHint())
             assertOptEqTuple(iter.next(), "b" to 2)
 
             assertEquals(1, iter.len())
@@ -466,9 +468,11 @@ class LruCacheTest {
         run {
             val iter = cache.iterMut()
             assertEquals(3, iter.len())
+            assertEquals(3 to 3, iter.sizeHint())
             assertOptEqMutTuple(iter.next(), "c" to 3)
 
             assertEquals(2, iter.len())
+            assertEquals(2 to 2, iter.sizeHint())
             assertOptEqMutTuple(iter.next(), "b" to 2)
 
             assertEquals(1, iter.len())
@@ -587,9 +591,11 @@ class LruCacheTest {
 
         val iter = cache.iterator() as IntoIter<String, Int>
         assertEquals(3, iter.len())
+        assertEquals(3 to 3, iter.sizeHint())
         assertEquals("a" to 1, iter.next())
 
         assertEquals(2, iter.len())
+        assertEquals(2 to 2, iter.sizeHint())
         assertEquals("b" to 2, iter.next())
 
         assertEquals(1, iter.len())
