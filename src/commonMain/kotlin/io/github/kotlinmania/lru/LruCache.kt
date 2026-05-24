@@ -994,6 +994,9 @@ class Iter<K : Any, V : Any> internal constructor(
         return key to value
     }
 
+    /** Returns lower and upper bounds for the elements remaining. */
+    fun sizeHint(): Pair<Int, Int> = len to len
+
     /** Returns the total count of elements remaining without consuming them. */
     fun count(): Int = len
 
@@ -1035,6 +1038,9 @@ class IterMut<K : Any, V : Any> internal constructor(
         return EntryView(node)
     }
 
+    /** Returns lower and upper bounds for the elements remaining. */
+    fun sizeHint(): Pair<Int, Int> = len to len
+
     /** Returns the total count of elements remaining without consuming them. */
     fun count(): Int = len
 
@@ -1062,6 +1068,12 @@ class IntoIter<K : Any, V : Any> internal constructor(
     override fun hasNext(): Boolean = !cache.isEmpty()
 
     override fun next(): Pair<K, V> = cache.popLru() ?: throw NoSuchElementException()
+
+    /** Returns lower and upper bounds for the elements remaining. */
+    fun sizeHint(): Pair<Int, Int> {
+        val len = cache.len()
+        return len to len
+    }
 
     /** Returns the total count of elements remaining without consuming them. */
     fun count(): Int = cache.len()
