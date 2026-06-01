@@ -87,7 +87,7 @@ fn main() {
 
 ```kotlin
 dependencies {
-    implementation("io.github.kotlinmania:lru-kotlin:0.1.0")
+    implementation("io.github.kotlinmania:lru-kotlin:0.1.1")
 }
 ```
 

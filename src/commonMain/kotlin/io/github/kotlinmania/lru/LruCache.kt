@@ -1,4 +1,6 @@
 // port-lint: source src/lib.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.lru
 
 // MIT License
@@ -22,6 +24,31 @@ package io.github.kotlinmania.lru
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+
+// Struct used to hold a key value pair. Also contains references to previous and next entries
+// so we can maintain the entries in a linked list ordered by their use.
+internal class LruEntry<K, V>(
+    var key: K?,
+    var value: V?,
+) {
+    var prev: LruEntry<K, V>? = null
+    var next: LruEntry<K, V>? = null
+
+    companion object {
+        fun <K, V> newSigil(): LruEntry<K, V> = LruEntry(null, null)
+    }
+}
+
+/** A mutable view of a key/value entry produced by [LruCache.iterMut]. */
+@kotlin.native.HiddenFromObjC
+interface MutableEntry<K, V> {
+    val key: K
+    var value: V
+
+    operator fun component1(): K = key
+
+    operator fun component2(): V = value
+}
 
 /**
  * An implementation of a LRU cache. The cache supports `get`, `getMut`, `put`,
@@ -53,30 +80,7 @@ package io.github.kotlinmania.lru
  * check(cache.get("banana") == 6)
  * ```
  */
-
-// Struct used to hold a key value pair. Also contains references to previous and next entries
-// so we can maintain the entries in a linked list ordered by their use.
-internal class LruEntry<K, V>(
-    var key: K?,
-    var value: V?,
-) {
-    var prev: LruEntry<K, V>? = null
-    var next: LruEntry<K, V>? = null
-
-    companion object {
-        fun <K, V> newSigil(): LruEntry<K, V> = LruEntry(null, null)
-    }
-}
-
-/** A mutable view of a key/value entry produced by [LruCache.iterMut]. */
-interface MutableEntry<K, V> {
-    val key: K
-    var value: V
-    operator fun component1(): K = key
-    operator fun component2(): V = value
-}
-
-/** An LRU Cache */
+@kotlin.native.HiddenFromObjC
 class LruCache<K : Any, V : Any> private constructor(
     private var capInternal: Int,
     private val map: HashMap<K, LruEntry<K, V>>,
@@ -121,7 +125,10 @@ class LruCache<K : Any, V : Any> private constructor(
      * check(cache.get(2) == "beta")
      * ```
      */
-    fun put(k: K, v: V): V? = capturingPut(k, v, capture = false)?.second
+    fun put(
+        k: K,
+        v: V,
+    ): V? = capturingPut(k, v, capture = false)?.second
 
     /**
      * Pushes a key-value pair into the cache. If an entry with key `k` already exists in
@@ -147,12 +154,19 @@ class LruCache<K : Any, V : Any> private constructor(
      * check(cache.get(3) == "alpha")
      * ```
      */
-    fun push(k: K, v: V): Pair<K, V>? = capturingPut(k, v, capture = true)
+    fun push(
+        k: K,
+        v: V,
+    ): Pair<K, V>? = capturingPut(k, v, capture = true)
 
     // Used internally by `put` and `push` to add a new entry to the lru.
     // Takes ownership of and returns entries replaced due to the cache's capacity
     // when `capture` is true.
-    private fun capturingPut(k: K, v: V, capture: Boolean): Pair<K, V>? {
+    private fun capturingPut(
+        k: K,
+        v: V,
+        capture: Boolean,
+    ): Pair<K, V>? {
         val node = map[k]
         return if (node != null) {
             // if the key is already in the cache just update its value and move it to the
@@ -172,8 +186,11 @@ class LruCache<K : Any, V : Any> private constructor(
 
     // Used internally to swap out a node if the cache is full or to create a new node if space
     // is available. Shared between `put`, `push`, `getOrInsert`, and `getOrInsertMut`.
-    private fun replaceOrCreateNode(k: K, v: V): Pair<Pair<K, V>?, LruEntry<K, V>> {
-        return if (len() == cap()) {
+    private fun replaceOrCreateNode(
+        k: K,
+        v: V,
+    ): Pair<Pair<K, V>?, LruEntry<K, V>> =
+        if (len() == cap()) {
             // if the cache is full, remove the last entry so we can use it for the new key
             val oldKey = tail.prev!!.key!!
             val oldNode = map.remove(oldKey)!!
@@ -191,7 +208,6 @@ class LruCache<K : Any, V : Any> private constructor(
             // if the cache is not full allocate a new LruEntry
             null to LruEntry(k, v)
         }
-    }
 
     /**
      * Returns a reference to the value of the key in the cache or `null` if it is not
@@ -311,7 +327,10 @@ class LruCache<K : Any, V : Any> private constructor(
      * check(cache.getOrInsert(1) { "b" } == "a")
      * ```
      */
-    fun getOrInsert(k: K, f: () -> V): V {
+    fun getOrInsert(
+        k: K,
+        f: () -> V,
+    ): V {
         val node = map[k]
         if (node != null) {
             detach(node)
@@ -335,7 +354,10 @@ class LruCache<K : Any, V : Any> private constructor(
      * Equivalent to [getOrInsert] in Kotlin since reference identity is preserved
      * for any [K] without explicit cloning.
      */
-    fun getOrInsertRef(k: K, f: () -> V): V = getOrInsert(k, f)
+    fun getOrInsertRef(
+        k: K,
+        f: () -> V,
+    ): V = getOrInsert(k, f)
 
     /**
      * Returns a reference to the value of the key in the cache if it is
@@ -364,7 +386,10 @@ class LruCache<K : Any, V : Any> private constructor(
      * check(cache.tryGetOrInsert(5, a) == "b")
      * ```
      */
-    fun tryGetOrInsert(k: K, f: () -> V): V {
+    fun tryGetOrInsert(
+        k: K,
+        f: () -> V,
+    ): V {
         val node = map[k]
         if (node != null) {
             detach(node)
@@ -382,7 +407,10 @@ class LruCache<K : Any, V : Any> private constructor(
      * Like [tryGetOrInsert]. Equivalent in Kotlin because there is no Rust-style
      * `to_owned()` distinction.
      */
-    fun tryGetOrInsertRef(k: K, f: () -> V): V = tryGetOrInsert(k, f)
+    fun tryGetOrInsertRef(
+        k: K,
+        f: () -> V,
+    ): V = tryGetOrInsert(k, f)
 
     /**
      * Returns a mutable reference to the value of the key in the cache if it is
@@ -406,7 +434,10 @@ class LruCache<K : Any, V : Any> private constructor(
      * check(cache.getOrInsertMut(3) { "e" } == "f")
      * ```
      */
-    fun getOrInsertMut(k: K, f: () -> V): V = getOrInsert(k, f)
+    fun getOrInsertMut(
+        k: K,
+        f: () -> V,
+    ): V = getOrInsert(k, f)
 
     /**
      * Returns a mutable reference to the value of the key in the cache if it is
@@ -417,7 +448,10 @@ class LruCache<K : Any, V : Any> private constructor(
      *
      * Equivalent to [getOrInsertMut] in Kotlin.
      */
-    fun getOrInsertMutRef(k: K, f: () -> V): V = getOrInsertMut(k, f)
+    fun getOrInsertMutRef(
+        k: K,
+        f: () -> V,
+    ): V = getOrInsertMut(k, f)
 
     /**
      * Returns a mutable reference to the value of the key in the cache if it is
@@ -426,13 +460,19 @@ class LruCache<K : Any, V : Any> private constructor(
      * the list and a mutable reference is returned. If the lambda throws,
      * the exception propagates and the cache is left unchanged.
      */
-    fun tryGetOrInsertMut(k: K, f: () -> V): V = tryGetOrInsert(k, f)
+    fun tryGetOrInsertMut(
+        k: K,
+        f: () -> V,
+    ): V = tryGetOrInsert(k, f)
 
     /**
      * Like [tryGetOrInsertMut]. Equivalent in Kotlin because there is no Rust-style
      * `to_owned()` distinction.
      */
-    fun tryGetOrInsertMutRef(k: K, f: () -> V): V = tryGetOrInsert(k, f)
+    fun tryGetOrInsertMutRef(
+        k: K,
+        f: () -> V,
+    ): V = tryGetOrInsert(k, f)
 
     /**
      * Returns a reference to the value corresponding to the key in the cache or `null` if it is
@@ -824,11 +864,12 @@ class LruCache<K : Any, V : Any> private constructor(
      * }
      * ```
      */
-    fun iter(): Iter<K, V> = Iter(
-        len = len(),
-        ptr = head.next,
-        end = tail.prev,
-    )
+    fun iter(): Iter<K, V> =
+        Iter(
+            len = len(),
+            ptr = head.next,
+            end = tail.prev,
+        )
 
     /**
      * An iterator visiting all entries in most-recently-used order, giving a mutable view on
@@ -854,11 +895,12 @@ class LruCache<K : Any, V : Any> private constructor(
      * }
      * ```
      */
-    fun iterMut(): IterMut<K, V> = IterMut(
-        len = len(),
-        ptr = head.next,
-        end = tail.prev,
-    )
+    fun iterMut(): IterMut<K, V> =
+        IterMut(
+            len = len(),
+            ptr = head.next,
+            end = tail.prev,
+        )
 
     /**
      * Drains the cache from least-recently-used to most-recently-used, returning ownership
@@ -946,8 +988,7 @@ class LruCache<K : Any, V : Any> private constructor(
          * `Cannot infer type for type parameter 'K' / 'V'`. Common Kotlin
          * callers can keep using `LruCache.unbounded<K, V>()` directly.
          */
-        internal fun <K : Any, V : Any> unbounded(): LruCache<K, V> =
-            LruCache(Int.MAX_VALUE, HashMap())
+        internal fun <K : Any, V : Any> unbounded(): LruCache<K, V> = LruCache(Int.MAX_VALUE, HashMap())
 
         private fun requirePositive(cap: Int): Int {
             require(cap > 0) { "capacity must be > 0, got $cap" }
@@ -962,12 +1003,12 @@ class LruCache<K : Any, V : Any> private constructor(
  * This class is created by the [LruCache.iter] method on [LruCache]. See its
  * documentation for more.
  */
+@kotlin.native.HiddenFromObjC
 class Iter<K : Any, V : Any> internal constructor(
     private var len: Int,
     private var ptr: LruEntry<K, V>?,
     private var end: LruEntry<K, V>?,
 ) : Iterator<Pair<K, V>> {
-
     /** Number of elements remaining in the iterator. */
     fun len(): Int = len
 
@@ -1010,12 +1051,12 @@ class Iter<K : Any, V : Any> internal constructor(
  * This class is created by the [LruCache.iterMut] method on [LruCache]. See its
  * documentation for more.
  */
+@kotlin.native.HiddenFromObjC
 class IterMut<K : Any, V : Any> internal constructor(
     private var len: Int,
     private var ptr: LruEntry<K, V>?,
     private var end: LruEntry<K, V>?,
 ) : Iterator<MutableEntry<K, V>> {
-
     /** Number of elements remaining in the iterator. */
     fun len(): Int = len
 
@@ -1051,17 +1092,19 @@ class IterMut<K : Any, V : Any> internal constructor(
             get() = node.key!!
         override var value: V
             get() = node.value!!
-            set(v) { node.value = v }
+            set(v) {
+                node.value = v
+            }
     }
 }
 
 /**
  * An iterator that drains a [LruCache] in least-recently-used order.
  */
+@kotlin.native.HiddenFromObjC
 class IntoIter<K : Any, V : Any> internal constructor(
     private val cache: LruCache<K, V>,
 ) : Iterator<Pair<K, V>> {
-
     /** Number of elements remaining in the iterator. */
     fun len(): Int = cache.len()
 
