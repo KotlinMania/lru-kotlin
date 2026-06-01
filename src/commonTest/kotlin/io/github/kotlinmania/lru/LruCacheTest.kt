@@ -9,25 +9,33 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-private fun <V> assertOptEq(opt: V?, v: V) {
+private fun <V> assertOptEq(
+    opt: V?,
+    v: V,
+) {
     assertNotNull(opt)
     assertEquals(v, opt)
 }
 
-private fun <K, V> assertOptEqTuple(opt: Pair<K, V>?, kv: Pair<K, V>) {
+private fun <K, V> assertOptEqTuple(
+    opt: Pair<K, V>?,
+    kv: Pair<K, V>,
+) {
     assertNotNull(opt)
     assertEquals(kv.first, opt.first)
     assertEquals(kv.second, opt.second)
 }
 
-private fun <K, V> assertOptEqMutTuple(view: MutableEntry<K, V>?, kv: Pair<K, V>) {
+private fun <K, V> assertOptEqMutTuple(
+    view: MutableEntry<K, V>?,
+    kv: Pair<K, V>,
+) {
     assertNotNull(view)
     assertEquals(kv.first, view.key)
     assertEquals(kv.second, view.value)
 }
 
 class LruCacheTest {
-
     @Test
     fun testUnbounded() {
         val cache = LruCache.unbounded<Int, Unit>()
@@ -104,7 +112,11 @@ class LruCacheTest {
         val b: () -> String = { "Two" }
         val f: () -> String = { error("nope") }
         assertEquals("One", cache.tryGetOrInsertRef("1", a))
-        try { cache.tryGetOrInsertRef("2", f); error("should throw") } catch (_: IllegalStateException) {}
+        try {
+            cache.tryGetOrInsertRef("2", f)
+            error("should throw")
+        } catch (_: IllegalStateException) {
+        }
         assertEquals("Two", cache.tryGetOrInsertRef("2", b))
         assertEquals("Two", cache.tryGetOrInsertRef("2", a))
         assertEquals(2, cache.len())
@@ -151,7 +163,11 @@ class LruCacheTest {
 
         cache.put(2, "d")
         assertEquals("d", cache.tryGetOrInsertMut(2) { "a" })
-        try { cache.tryGetOrInsertMut(3) { error("failed") }; error("should throw") } catch (_: IllegalStateException) {}
+        try {
+            cache.tryGetOrInsertMut(3) { error("failed") }
+            error("should throw")
+        } catch (_: IllegalStateException) {
+        }
         assertEquals("b", cache.tryGetOrInsertMut(4) { "b" })
         assertEquals("b", cache.tryGetOrInsertMut(4) { "a" })
     }
@@ -163,7 +179,11 @@ class LruCacheTest {
         val b: () -> String = { "Two" }
         val f: () -> String = { error("nope") }
         assertEquals("One", cache.tryGetOrInsertMutRef("1", a))
-        try { cache.tryGetOrInsertMutRef("2", f); error("should throw") } catch (_: IllegalStateException) {}
+        try {
+            cache.tryGetOrInsertMutRef("2", f)
+            error("should throw")
+        } catch (_: IllegalStateException) {
+        }
         cache.put("2", "New two")
         assertEquals("New two", cache.tryGetOrInsertMutRef("2", a))
     }
@@ -791,7 +811,9 @@ class LruCacheTest {
     fun iterMutStackedBorrowsViolation() {
         // Reference values mutate through MutableEntry; primitive Int values cannot
         // be mutated through a reference in Kotlin, so we wrap in IntBox.
-        class IntBox(var value: Int)
+        class IntBox(
+            var value: Int,
+        )
 
         val cache = LruCache<Int, IntBox>(3)
         cache.put(1, IntBox(10))

@@ -9,18 +9,7 @@ permissions:
 jobs:
   build:
     name: Build and Test (Swift)
-    # The Kotlin/Native 2.3.x distribution ships prebuilt platform caches
-    # (liborg.jetbrains.kotlin.native.platform.{CoreFoundation,Foundation,darwin}-cache.a)
-    # that reference macOS 26 / iOS 26 SDK symbols — NSCalendarIdentifierVikram,
-    # NSURLUbiquitousItemSupportedSyncControlsKey, mach_vm_reclaim_update_kernel_accounting_trap,
-    # xpc_session_set_peer_requirement, etc. macos-latest currently resolves to
-    # macos-15 (Xcode 16 SDK) and `swift test` link fails with "Undefined symbols
-    # for architecture arm64" on every one of those when the repo's Kotlin code
-    # reaches into Foundation / CoreFoundation / darwin platform APIs. Pin
-    # macos-26 uniformly so the SDK in
-    # /Applications/Xcode_26.x.app/Contents/Developer/Platforms provides the
-    # symbol stubs the cache expects.
-    runs-on: macos-26
+    runs-on: macos-latest
     permissions:
       contents: read
     steps:
@@ -36,14 +25,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6.1.0
 
-      # NOTE: do NOT add a `maxim-lobanov/setup-xcode` step here.
-      # KotlinMania's enterprise GitHub Actions policy does not whitelist
-      # third-party actions; a workflow that references one returns
-      # startup_failure with zero jobs spawned. The macos-26 image's default
-      # Xcode is already in the 26.x line (currently 26.4.1) and supplies the
-      # macOS 26 SDK symbols the Kotlin/Native 2.3.x platform caches expect.
-      # A working run prints "Target: arm64-apple-macosx26.0" from
-      # `swift --version` straight off the image default.
       - name: Print Swift / Xcode versions
         run: |
           swift --version
@@ -69,11 +50,10 @@ jobs:
       #     configured value`.
       #
       # Output lands in `build/swift-test/`:
-      #   * `lib<Module>.a` — the merged static archive containing every
-      #     `@ExportedBridge`-annotated function emitted by
-      #     `build/SwiftExport/macosArm64/Debug/**/*.kt`. `<Module>` is the
-      #     repo's `project.frameworkName` (the Swift Export module name).
-      #   * Four `.swiftmodule/` directories: <Module>,
+      #   * `libLru.a` — the merged static archive containing
+      #     every `@ExportedBridge`-annotated function emitted by
+      #     `build/SwiftExport/macosArm64/Debug/**/*.kt`.
+      #   * Four `.swiftmodule/` directories: Lru,
       #     KotlinRuntimeSupport, ExportedKotlinPackages, KotlinRuntime.
       - name: Build Swift Export package
         env:
@@ -97,7 +77,7 @@ jobs:
         with:
           name: swift-export-artifacts
           path: |
-            build/swift-test/lib*.a
+            build/swift-test/libLru.a
             build/swift-test/*.swiftmodule/
             build/SPMPackage/macosArm64/Debug/
           retention-days: 7
