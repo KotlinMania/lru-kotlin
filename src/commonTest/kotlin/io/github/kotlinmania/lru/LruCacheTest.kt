@@ -1,9 +1,10 @@
-// port-lint: source src/lib.rs
+// port-lint: source lib.rs
 package io.github.kotlinmania.lru
 
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -94,15 +95,13 @@ class LruCacheTest {
         val cache = LruCache<String, String>(2)
 
         assertEquals("red", cache.tryGetOrInsert("apple") { "red" })
-        assertEquals("red", cache.tryGetOrInsert("apple") { error("failed") })
+        assertEquals("red", cache.tryGetOrInsert("apple") { throw IllegalStateException("failed") })
         assertEquals("orange", cache.tryGetOrInsert("banana") { "orange" })
-        try {
-            cache.tryGetOrInsert("lemon") { error("failed") }
-            error("should have thrown")
-        } catch (e: IllegalStateException) {
-            assertEquals("failed", e.message)
+        val ex = assertFailsWith<IllegalStateException> {
+            cache.tryGetOrInsert("lemon") { throw IllegalStateException("failed") }
         }
-        assertEquals("orange", cache.tryGetOrInsert("banana") { error("failed") })
+        assertEquals("failed", ex.message)
+        assertEquals("orange", cache.tryGetOrInsert("banana") { throw IllegalStateException("failed") })
     }
 
     @Test
@@ -110,12 +109,10 @@ class LruCacheTest {
         val cache = LruCache<String, String>(2)
         val a: () -> String = { "One" }
         val b: () -> String = { "Two" }
-        val f: () -> String = { error("nope") }
+        val f: () -> String = { throw IllegalStateException("nope") }
         assertEquals("One", cache.tryGetOrInsertRef("1", a))
-        try {
+        assertFailsWith<IllegalStateException> {
             cache.tryGetOrInsertRef("2", f)
-            error("should throw")
-        } catch (_: IllegalStateException) {
         }
         assertEquals("Two", cache.tryGetOrInsertRef("2", b))
         assertEquals("Two", cache.tryGetOrInsertRef("2", a))
@@ -163,10 +160,8 @@ class LruCacheTest {
 
         cache.put(2, "d")
         assertEquals("d", cache.tryGetOrInsertMut(2) { "a" })
-        try {
-            cache.tryGetOrInsertMut(3) { error("failed") }
-            error("should throw")
-        } catch (_: IllegalStateException) {
+        assertFailsWith<IllegalStateException> {
+            cache.tryGetOrInsertMut(3) { throw IllegalStateException("failed") }
         }
         assertEquals("b", cache.tryGetOrInsertMut(4) { "b" })
         assertEquals("b", cache.tryGetOrInsertMut(4) { "a" })
@@ -177,12 +172,10 @@ class LruCacheTest {
         val cache = LruCache<String, String>(2)
         val a: () -> String = { "One" }
         val b: () -> String = { "Two" }
-        val f: () -> String = { error("nope") }
+        val f: () -> String = { throw IllegalStateException("nope") }
         assertEquals("One", cache.tryGetOrInsertMutRef("1", a))
-        try {
+        assertFailsWith<IllegalStateException> {
             cache.tryGetOrInsertMutRef("2", f)
-            error("should throw")
-        } catch (_: IllegalStateException) {
         }
         cache.put("2", "New two")
         assertEquals("New two", cache.tryGetOrInsertMutRef("2", a))

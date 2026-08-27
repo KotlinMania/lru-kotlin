@@ -1,4 +1,4 @@
-import XCTest
+import Testing
 import Lru
 
 // Smoke test for the Kotlin → Swift Export → SPM → swift test pipeline.
@@ -28,8 +28,10 @@ import Lru
 // Add more meaningful per-API tests below as the Swift Export surface
 // grows. For now the import + a single passing assertion is the
 // canary that the pipeline is green for this repo.
-final class LruExportTests: XCTestCase {
-    func testSwiftModuleLoads() throws {
-        XCTAssertTrue(true, "Lru swift module imported cleanly")
+@Suite("Lru Swift Export Tests")
+struct LruExportTests {
+    @Test("Lru swift module imported cleanly")
+    func swiftModuleLoads() {
+        #expect(true)
     }
 }

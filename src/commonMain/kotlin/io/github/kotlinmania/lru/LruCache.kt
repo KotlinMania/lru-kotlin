@@ -1,4 +1,4 @@
-// port-lint: source src/lib.rs
+// port-lint: source lib.rs
 @file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
 
 package io.github.kotlinmania.lru
@@ -52,8 +52,7 @@ interface MutableEntry<K, V> {
 
 /**
  * An implementation of a LRU cache. The cache supports `get`, `getMut`, `put`,
- * and `pop` operations, all of which are O(1). This crate was heavily influenced
- * by the [LRU Cache implementation in an earlier version of Rust's std::collections crate](https://doc.rust-lang.org/0.12.0/std/collections/lru_cache/struct.LruCache.html).
+ * and `pop` operations, all of which are O(1).
  *
  * ## Example
  *
@@ -376,7 +375,7 @@ class LruCache<K : Any, V : Any> private constructor(
      * cache.put(2, "c")
      * cache.put(3, "d")
      *
-     * val f: () -> String = { error("failed") }
+     * val f: () -> String = { throw IllegalStateException("failed") }
      * val a: () -> String = { "a" }
      * val b: () -> String = { "b" }
      * check(cache.tryGetOrInsert(2, a) == "c")
@@ -404,8 +403,7 @@ class LruCache<K : Any, V : Any> private constructor(
     }
 
     /**
-     * Like [tryGetOrInsert]. Equivalent in Kotlin because there is no Rust-style
-     * `to_owned()` distinction.
+     * Like [tryGetOrInsert].
      */
     fun tryGetOrInsertRef(
         k: K,
@@ -466,8 +464,7 @@ class LruCache<K : Any, V : Any> private constructor(
     ): V = tryGetOrInsert(k, f)
 
     /**
-     * Like [tryGetOrInsertMut]. Equivalent in Kotlin because there is no Rust-style
-     * `to_owned()` distinction.
+     * Like [tryGetOrInsertMut].
      */
     fun tryGetOrInsertMutRef(
         k: K,
@@ -981,12 +978,6 @@ class LruCache<K : Any, V : Any> private constructor(
          * ```kotlin
          * val cache = LruCache.unbounded<Long, String>()
          * ```
-         *
-         * Marked `internal` because Swift Export cannot infer the type
-         * parameters from a no-argument generic factory and fails the
-         * `compileSwiftExportMainKotlinMacosArm64` bridge with
-         * `Cannot infer type for type parameter 'K' / 'V'`. Common Kotlin
-         * callers can keep using `LruCache.unbounded<K, V>()` directly.
          */
         internal fun <K : Any, V : Any> unbounded(): LruCache<K, V> = LruCache(Int.MAX_VALUE, HashMap())
 
