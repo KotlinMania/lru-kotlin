@@ -1,8 +1,6 @@
 import groovy.json.JsonSlurper
 import org.gradle.api.GradleException
 import org.gradle.api.artifacts.VersionCatalogsExtension
-import org.gradle.api.publish.maven.MavenPublication
-import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.tasks.testing.AbstractTestTask
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
@@ -57,70 +55,6 @@ val commonMainDependencyBundle =
         .named("libs")
         .findBundle(commonMainBundleName)
         .orElseThrow { GradleException("Missing libs bundle '$commonMainBundleName'") }
-
-fun csvProperty(name: String): Set<String> =
-    providers
-        .gradleProperty(name)
-        .map { value ->
-            value
-                .split(",")
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .toSet()
-        }.getOrElse(emptySet())
-
-fun optionalTrimmedProperty(name: String): String? =
-    providers
-        .gradleProperty(name)
-        .map { it.trim() }
-        .orNull
-        ?.takeIf { it.isNotEmpty() }
-
-val enabledFeatureNames = csvProperty("project.features")
-val benchmarkEnabled = "benchmark" in enabledFeatureNames
-val benchmarkTargetNames = csvProperty("project.benchmark.targets")
-val commonBenchmarkBundleName = optionalTrimmedProperty("project.dependencies.commonBenchmarkBundle")
-val commonBenchmarkDependencyBundle =
-    commonBenchmarkBundleName?.let { bundleName ->
-        extensions
-            .getByType(VersionCatalogsExtension::class.java)
-            .named("libs")
-            .findBundle(bundleName)
-            .orElseThrow { GradleException("Missing libs bundle '$bundleName'") }
-    }
-val commonTestBundleName = optionalTrimmedProperty("project.dependencies.commonTestBundle")
-val commonTestDependencyBundle =
-    commonTestBundleName?.let { bundleName ->
-        extensions
-            .getByType(VersionCatalogsExtension::class.java)
-            .named("libs")
-            .findBundle(bundleName)
-            .orElseThrow { GradleException("Missing libs bundle '$bundleName'") }
-    }
-if (benchmarkEnabled && commonBenchmarkDependencyBundle == null) {
-    throw GradleException("Feature 'benchmark' requires project.dependencies.commonBenchmarkBundle")
-}
-val benchmarkWarmups = providers.gradleProperty("project.benchmark.warmups").map { it.toInt() }.getOrElse(3)
-val benchmarkIterations = providers.gradleProperty("project.benchmark.iterations").map { it.toInt() }.getOrElse(5)
-val benchmarkIterationTime = providers.gradleProperty("project.benchmark.iterationTime").map { it.toLong() }.getOrElse(1L)
-val benchmarkIterationTimeUnit = providers.gradleProperty("project.benchmark.iterationTimeUnit").getOrElse("s")
-val intellijCoroutinesVersion =
-    providers.gradleProperty("versions.intellij.coroutines").getOrElse("1.10.2-intellij-1")
-
-// KGP runs Swift Export in an isolated worker whose classpath is
-// `swiftExportClasspath`. Adding a dependency disables KGP's default
-// dependency population, so keep the default embeddable runner explicit too.
-val projectDependencyHandler = project.dependencies
-configurations.configureEach {
-    if (name == "swiftExportClasspath") {
-        dependencies.add(projectDependencyHandler.create("org.jetbrains.kotlin:swift-export-embeddable:$kotlinVersion"))
-        dependencies.add(
-            projectDependencyHandler.create(
-                "org.jetbrains.intellij.deps.kotlinx:kotlinx-coroutines-core-jvm:$intellijCoroutinesVersion",
-            ),
-        )
-    }
-}
 
 // Opt-ins shared across Kotlin targets.
 val commonOptIns =
@@ -348,6 +282,15 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().con
     }
 }
 
+// Gap #9b: KGP-generated bridge boilerplate and KotlinCoroutineSupport runtime
+// produce warnings (unchecked casts, unused expressions, opt-in requirements)
+// that cannot be fixed in source — they are regenerated every build.
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
+    if (name.startsWith("compileSwiftExport")) {
+        compilerOptions.allWarningsAsErrors.set(false)
+    }
+}
+
 val jvmToolchainVersion = providers.gradleProperty("jvm.toolchain").getOrElse("21").toInt()
 
 // ============================================================================
@@ -387,57 +330,19 @@ kotlin {
         }
     }
 
-    fun KotlinTarget.configureBenchmarkCompilation() {
-        if (!benchmarkEnabled || name !in benchmarkTargetNames) return
-        val mainCompilation = compilations.getByName("main")
-        compilations.create("benchmark") {
-            associateWith(mainCompilation)
-            defaultSourceSet.dependencies {
-                implementation(commonBenchmarkDependencyBundle!!)
-            }
-        }
-    }
-
     // Apple — Tier 1/2 targets
-    macosArm64 {
-        configureBenchmarkCompilation()
-        addToXcf()
-    }
-    iosArm64 {
-        configureBenchmarkCompilation()
-        addToXcf(static = true)
-    }
-    iosSimulatorArm64 {
-        configureBenchmarkCompilation()
-        addToXcf(static = true)
-    }
-    tvosArm64 {
-        configureBenchmarkCompilation()
-        addToXcf()
-    }
-    tvosSimulatorArm64 {
-        configureBenchmarkCompilation()
-        addToXcf()
-    }
-    watchosArm64 {
-        configureBenchmarkCompilation()
-        addToXcf()
-    }
-    watchosDeviceArm64 {
-        configureBenchmarkCompilation()
-        addToXcf()
-    }
-    watchosSimulatorArm64 {
-        configureBenchmarkCompilation()
-        addToXcf()
-    }
+    macosArm64 { addToXcf() }
+    iosArm64 { addToXcf(static = true) }
+    iosSimulatorArm64 { addToXcf(static = true) }
+    tvosArm64 { addToXcf() }
+    tvosSimulatorArm64 { addToXcf() }
+    watchosArm64 { addToXcf() }
+    watchosDeviceArm64 { addToXcf() }
+    watchosSimulatorArm64 { addToXcf() }
 
     // iosX64: Intel Mac simulator. Tier 3 in Kotlin/Native but NOT deprecated —
     // Apple still ships x86_64 iOS simulator runtimes, so it is always built.
-    iosX64 {
-        configureBenchmarkCompilation()
-        addToXcf(static = true)
-    }
+    iosX64 { addToXcf(static = true) }
 
     // Other native — Tier 1/2
     linuxX64 { configureBenchmarkCompilation() }
@@ -541,6 +446,8 @@ if (benchmarkEnabled) {
     }
 }
 
+
+
 // ============================================================================
 // Test logging
 // ============================================================================
@@ -624,6 +531,7 @@ tasks.named("check") {
     // wasmWasi). Test EXECUTION belongs to check; target BUILD coverage belongs
     // to the explicit all-target build set below.
     dependsOn("testAndroidHostTest")
+    dependsOn("hostTests")
     // Swift Export smoke test is required; it must not self-skip.
     dependsOn("swiftExportSmokeTest")
 }
@@ -696,198 +604,40 @@ rootProject.extensions.configure<NodeJsRootExtension>("kotlinNodeJs") {
 // Flow: publish all KMP publications into a local staging Maven layout ->
 // zip it -> POST the zip to the Portal upload endpoint with a Bearer token.
 // ============================================================================
-val publishProjectName = providers.gradleProperty("project.name").getOrElse("unnamed-project")
-
-// Central requires a Javadoc jar per publication; KMP produces none, so attach
-// an empty one to every Maven publication.
-val emptyJavadocJar by tasks.registering(Jar::class) {
-    archiveClassifier.set("javadoc")
-}
-
-publishing {
-    publications.withType<MavenPublication>().configureEach {
-        artifact(emptyJavadocJar)
-        pom {
-            name.set(publishProjectName)
-            description.set(providers.gradleProperty("project.pom.description").getOrElse(""))
-            inceptionYear.set("2026")
-            url.set("https://github.com/KotlinMania/$publishProjectName")
-            licenses {
-                license {
-                    name.set(providers.gradleProperty("project.pom.licenseName").getOrElse("MIT"))
-                    url.set(
-                        providers
-                            .gradleProperty("project.pom.licenseUrl")
-                            .getOrElse("https://opensource.org/licenses/MIT"),
-                    )
-                    distribution.set("repo")
-                }
-            }
-            developers {
-                developer {
-                    id.set("sydneyrenee")
-                    name.set("Sydney Renee")
-                    email.set("sydney@solace.ofharmony.ai")
-                    url.set("https://github.com/sydneyrenee")
-                }
-            }
-            scm {
-                url.set("https://github.com/KotlinMania/$publishProjectName")
-                connection.set("scm:git:git://github.com/KotlinMania/$publishProjectName.git")
-                developerConnection.set("scm:git:ssh://github.com/KotlinMania/$publishProjectName.git")
+mavenPublishing {
+    publishToMavenCentral()
+    if (project.findProperty("RELEASE_SIGNING_ENABLED") != "false") {
+        signAllPublications()
+    }
+    val projectName = providers.gradleProperty("project.name").getOrElse("unnamed-project")
+    coordinates(group.toString(), projectName, version.toString())
+    pom {
+        name.set(projectName)
+        description.set(providers.gradleProperty("project.pom.description").getOrElse(""))
+        inceptionYear.set("2026")
+        url.set("https://github.com/KotlinMania/$projectName")
+        licenses {
+            license {
+                name.set(providers.gradleProperty("project.pom.licenseName").getOrElse("MIT"))
+                url.set(
+                    providers.gradleProperty("project.pom.licenseUrl").getOrElse("https://opensource.org/licenses/MIT"),
+                )
+                distribution.set("repo")
             }
         }
-    }
-
-    // Stage into a local Maven layout that becomes the Portal deployment bundle.
-    // maven-publish auto-generates the md5/sha1/sha256/sha512 checksums Central
-    // requires; signing (below) adds the .asc signatures.
-    repositories {
-        maven {
-            name = "centralPortalStaging"
-            url = uri(layout.buildDirectory.dir("staging-deploy"))
-        }
-    }
-}
-
-signing {
-    val signingKey = providers.gradleProperty("signingInMemoryKey").orNull
-    val signingKeyId = providers.gradleProperty("signingInMemoryKeyId").orNull
-    val signingPassword = providers.gradleProperty("signingInMemoryKeyPassword").orNull
-    val signingEnabled = project.findProperty("RELEASE_SIGNING_ENABLED") != "false" && signingKey != null
-    if (signingEnabled) {
-        useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-        sign(publishing.publications)
-    }
-}
-
-val centralPortalPublishTasks =
-    tasks.withType<PublishToMavenRepository>().matching {
-        it.name.endsWith("ToCentralPortalStagingRepository")
-    }
-
-centralPortalPublishTasks.configureEach {
-    dependsOn(tasks.withType<Sign>())
-}
-
-// Zip the staged Maven layout into a single Central Portal deployment bundle.
-val centralPortalBundle by tasks.registering(Zip::class) {
-    group = "publishing"
-    description = "Bundles the staged Maven artifacts into a Central Portal deployment zip."
-    dependsOn(centralPortalPublishTasks)
-    from(layout.buildDirectory.dir("staging-deploy"))
-    archiveFileName.set("$publishProjectName-$version-bundle.zip")
-    destinationDirectory.set(layout.buildDirectory.dir("central-portal"))
-}
-
-// Upload the bundle to the Sonatype Central Portal Publisher API.
-// publishingType: USER_MANAGED (default, safe — validates then waits for a
-// manual release in the Portal UI) or AUTOMATIC (publishes after validation).
-val publishToCentralPortal by tasks.registering {
-    group = "publishing"
-    description = "Uploads the deployment bundle to the Sonatype Central Portal."
-    dependsOn(centralPortalBundle)
-    doLast {
-        val user =
-            providers.gradleProperty("mavenCentralUsername").orNull
-                ?: error("mavenCentralUsername is required to publish to the Central Portal.")
-        val password =
-            providers.gradleProperty("mavenCentralPassword").orNull
-                ?: error("mavenCentralPassword is required to publish to the Central Portal.")
-        val publishingType = providers.gradleProperty("centralPublishingType").getOrElse("USER_MANAGED")
-        val token = Base64.getEncoder().encodeToString("$user:$password".toByteArray(Charsets.UTF_8))
-
-        val bundle =
-            centralPortalBundle
-                .get()
-                .archiveFile
-                .get()
-                .asFile
-        require(bundle.exists()) { "Deployment bundle not found: $bundle" }
-
-        val boundary = "CentralPortalBoundary" + UUID.randomUUID().toString().replace("-", "")
-        val crlf = "\r\n"
-        val preamble =
-            (
-                "--$boundary$crlf" +
-                    "Content-Disposition: form-data; name=\"bundle\"; filename=\"${bundle.name}\"$crlf" +
-                    "Content-Type: application/octet-stream$crlf$crlf"
-            ).toByteArray(Charsets.UTF_8)
-        val epilogue = "$crlf--$boundary--$crlf".toByteArray(Charsets.UTF_8)
-        val body = preamble + bundle.readBytes() + epilogue
-
-        val deploymentName = "$publishProjectName-$version"
-        val uploadUri =
-            URI(
-                "https://central.sonatype.com/api/v1/publisher/upload" +
-                    "?name=$deploymentName&publishingType=$publishingType",
-            )
-        val request =
-            HttpRequest
-                .newBuilder()
-                .uri(uploadUri)
-                .header("Authorization", "Bearer $token")
-                .header("Content-Type", "multipart/form-data; boundary=$boundary")
-                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-                .build()
-
-        val client = HttpClient.newHttpClient()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        if (response.statusCode() !in 200..299) {
-            error("Central Portal upload failed: HTTP ${response.statusCode()} — ${response.body()}")
-        }
-        val deploymentId = response.body().trim()
-        logger.lifecycle(
-            "Central Portal upload accepted (deployment id: $deploymentId). " +
-                "publishingType=$publishingType.",
-        )
-        val automaticPublishing = publishingType.equals("AUTOMATIC", ignoreCase = true)
-        val terminalStates =
-            if (automaticPublishing) {
-                setOf("PUBLISHED")
-            } else {
-                setOf("VALIDATED", "PUBLISHED")
-            }
-        val statusUri = URI("https://central.sonatype.com/api/v1/publisher/status?id=$deploymentId")
-        val statusAttempts =
-            providers.gradleProperty("centralPublishStatusAttempts").map(String::toInt).getOrElse(120)
-        val statusDelayMillis =
-            providers.gradleProperty("centralPublishStatusDelayMillis").map(String::toLong).getOrElse(10_000L)
-        repeat(statusAttempts) { attempt ->
-            val statusRequest =
-                HttpRequest
-                    .newBuilder()
-                    .uri(statusUri)
-                    .header("Authorization", "Bearer $token")
-                    .POST(HttpRequest.BodyPublishers.noBody())
-                    .build()
-            val statusResponse = client.send(statusRequest, HttpResponse.BodyHandlers.ofString())
-            if (statusResponse.statusCode() !in 200..299) {
-                error("Central Portal status check failed: HTTP ${statusResponse.statusCode()} — ${statusResponse.body()}")
-            }
-            val statusBody = JsonSlurper().parseText(statusResponse.body()) as Map<*, *>
-            val deploymentState =
-                statusBody["deploymentState"]?.toString()
-                    ?: error("Central Portal status response did not contain deploymentState: ${statusResponse.body()}")
-            when (deploymentState) {
-                "FAILED" -> error("Central Portal deployment failed: ${statusBody["errors"] ?: statusResponse.body()}")
-                in terminalStates -> {
-                    logger.lifecycle("Central Portal deployment $deploymentId reached $deploymentState.")
-                    return@doLast
-                }
-            }
-            logger.lifecycle(
-                "Central Portal deployment $deploymentId is $deploymentState " +
-                    "(${attempt + 1}/$statusAttempts).",
-            )
-            if (attempt + 1 < statusAttempts) {
-                Thread.sleep(statusDelayMillis)
+        developers {
+            developer {
+                id.set("sydneyrenee")
+                name.set("Sydney Renee")
+                email.set("sydney@solace.ofharmony.ai")
+                url.set("https://github.com/sydneyrenee")
             }
         }
-        error(
-            "Central Portal deployment $deploymentId did not reach " +
-                "${terminalStates.joinToString("/")} after $statusAttempts checks.",
-        )
+        scm {
+            url.set("https://github.com/KotlinMania/$projectName")
+            connection.set("scm:git:git://github.com/KotlinMania/$projectName.git")
+            developerConnection.set("scm:git:ssh://github.com/KotlinMania/$projectName.git")
+        }
     }
 }
 
@@ -920,26 +670,6 @@ tasks.register("hostTests") {
     )
 }
 
-// Patch generated SPM Package.swift to include minimum macOS platform for Swift Concurrency
-tasks.matching { it.name.contains("GenerateSPMPackage") }.configureEach {
-    doLast {
-        val spmDir = layout.buildDirectory.dir("SPMPackage").orNull?.asFile
-        if (spmDir != null && spmDir.exists()) {
-            spmDir.walkTopDown().filter { it.name == "Package.swift" }.forEach { file ->
-                val text = file.readText()
-                if (!text.contains("platforms:")) {
-                    file.writeText(
-                        text.replaceFirst(
-                            Regex("""(let package = Package\s*\(\s*name:\s*"[^"]*",)"""),
-                            "$1\n    platforms: [.macOS(.v14)],",
-                        ),
-                    )
-                }
-            }
-        }
-    }
-}
-
 // Swift Export smoke test — produces the SPM package via embedSwiftExportForXcode
 // (spawned with the Xcode-style env it requires) and runs `swift test` against it,
 // so Swift Export breakage surfaces locally, not only in the swift.yml CI job.
@@ -957,11 +687,7 @@ tasks.register("swiftExportSmokeTest") {
                 .dir("swift-test")
                 .get()
                 .asFile
-        if (swiftBuildFile.exists()) {
-            swiftBuildFile.deleteRecursively()
-        }
-        swiftBuildFile.mkdirs()
-        val swiftBuildDir = swiftBuildFile.absolutePath
+                .absolutePath
         execOperations
             .exec {
                 workingDir = projectDir
@@ -986,6 +712,23 @@ tasks.register("swiftExportSmokeTest") {
                     ),
                 )
             }.assertNormalExitValue()
+
+        val generatedPackageSwift =
+            layout.buildDirectory
+                .file("SPMPackage/macosArm64/Debug/Package.swift")
+                .get()
+                .asFile
+        if (generatedPackageSwift.exists()) {
+            val text = generatedPackageSwift.readText()
+            if (!text.contains("platforms:")) {
+                generatedPackageSwift.writeText(
+                    text.replaceFirst(
+                        Regex("(name:\\s*\"[^\"]*\",)"),
+                        "\$1\n    platforms: [.macOS(.v14)],",
+                    ),
+                )
+            }
+        }
 
         execOperations
             .exec {
