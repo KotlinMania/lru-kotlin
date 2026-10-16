@@ -83,7 +83,7 @@ jobs:
           CONFIGURATION: Debug
           ARCHS: arm64
           FRAMEWORKS_FOLDER_PATH: Frameworks
-          MACOSX_DEPLOYMENT_TARGET: "14.0"
+          MACOSX_DEPLOYMENT_TARGET: "15.0"
           DEPLOYMENT_TARGET_SETTING_NAME: MACOSX_DEPLOYMENT_TARGET
         run: ./gradlew embedSwiftExportForXcode --no-configuration-cache
 
@@ -99,11 +99,13 @@ jobs:
               package.write_text(
                   re.sub(
                       r'(name:\s*"[^"]*",)',
-                      r'\1\n    platforms: [.macOS(.v14)],',
+                      r'\1\n    platforms: [.macOS("15.0")],',
                       text,
                       count=1,
                   )
               )
+          elif ".macOS(.v14)" in text:
+              package.write_text(text.replace(".macOS(.v14)", '.macOS("15.0")'))
           PY
 
       - name: Run swift test against Kotlin-exported module
