@@ -46,6 +46,8 @@ class LruCacheTest {
         assertEquals(13370, cache.len())
     }
 
+    // test_with_hasher: unported because custom BuildHasher parameterization is a Rust-specific trait absent in Kotlin Multiplatform collection equality.
+
     @Test
     fun testPutAndGet() {
         val cache = LruCache<String, String>(2)
@@ -97,9 +99,10 @@ class LruCacheTest {
         assertEquals("red", cache.tryGetOrInsert("apple") { "red" })
         assertEquals("red", cache.tryGetOrInsert("apple") { throw IllegalStateException("failed") })
         assertEquals("orange", cache.tryGetOrInsert("banana") { "orange" })
-        val ex = assertFailsWith<IllegalStateException> {
-            cache.tryGetOrInsert("lemon") { throw IllegalStateException("failed") }
-        }
+        val ex =
+            assertFailsWith<IllegalStateException> {
+                cache.tryGetOrInsert("lemon") { throw IllegalStateException("failed") }
+            }
         assertEquals("failed", ex.message)
         assertEquals("orange", cache.tryGetOrInsert("banana") { throw IllegalStateException("failed") })
     }
@@ -455,6 +458,9 @@ class LruCacheTest {
         assertEquals("d", cache.get(4))
     }
 
+    // test_send: unported because Rust Send trait bounds and thread-affinity compile-time checks do not translate to Kotlin.
+    // test_multiple_threads: unported because scoped_threadpool lifetime-bounded concurrent peek validation relies on Rust scoped borrows.
+
     @Test
     fun testIterForwards() {
         val cache = LruCache<String, Int>(3)
@@ -569,6 +575,8 @@ class LruCacheTest {
             assertNull(iter.nextBack())
         }
     }
+
+    // test_iter_multiple_threads: unported because scoped_threadpool concurrent iterator mutation relies on Rust scoped borrows.
 
     @Test
     fun testIterClone() {
