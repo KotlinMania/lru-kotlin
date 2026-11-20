@@ -88,7 +88,12 @@ class StringLruCache private constructor(
     fun clone(): StringLruCache = StringLruCache(inner.clone())
 
     /** Lists all entries from most-recently used to least-recently used. */
-    fun entriesMruToLru(): List<StringLruEntry> = inner.iter().asSequence().map { it.toEntry() }.toList()
+    fun entriesMruToLru(): List<StringLruEntry> =
+        inner
+            .iter()
+            .asSequence()
+            .map { it.toEntry() }
+            .toList()
 
     override fun toString(): String = inner.toString()
 
