@@ -180,7 +180,7 @@ class LruCacheTest {
             cache.tryGetOrInsertMutRef("2", f)
         }
         cache.put("2", "New two")
-        assertEquals("New two", cache.tryGetOrInsertMutRef("2", a))
+        assertEquals("New two", cache.tryGetOrInsertMutRef("2", b))
     }
 
     @Test
@@ -385,7 +385,7 @@ class LruCacheTest {
         for (i in 0 until 75) assertEquals((i + 200) to "C", cache.popLru())
         for (i in 0 until 75) assertEquals((74 - i + 100) to "B", cache.popLru())
         assertEquals(25 to "A", cache.popLru())
-        for (i in 0 until 50) assertNull(cache.popLru())
+        repeat(50) { assertNull(cache.popLru()) }
     }
 
     @Test
@@ -404,7 +404,7 @@ class LruCacheTest {
         for (i in 0 until 75) assertEquals((i + 100) to "B", cache.popMru())
         for (i in 0 until 75) assertEquals((74 - i + 200) to "C", cache.popMru())
         for (i in (26 until 75).reversed()) assertEquals(i to "A", cache.popMru())
-        for (i in 0 until 50) assertNull(cache.popMru())
+        repeat(50) { assertNull(cache.popMru()) }
     }
 
     @Test
@@ -676,7 +676,7 @@ class LruCacheTest {
         // upstream test is meaningless under GC, so we assert that the cache size stays
         // bounded across many insertions.
         val n = 100
-        for (k in 0 until n) {
+        repeat(n) {
             val cache = LruCache<Int, Int>(1)
             for (i in 0 until n) cache.put(i, i)
             assertEquals(1, cache.len())
@@ -687,7 +687,7 @@ class LruCacheTest {
     @Test
     fun testNoMemoryLeaksWithClear() {
         val n = 100
-        for (k in 0 until n) {
+        repeat(n) {
             val cache = LruCache<Int, Int>(1)
             for (i in 0 until n) cache.put(i, i)
             cache.clear()
@@ -698,7 +698,7 @@ class LruCacheTest {
     @Test
     fun testNoMemoryLeaksWithResize() {
         val n = 100
-        for (k in 0 until n) {
+        repeat(n) {
             val cache = LruCache<Int, Int>(1)
             for (i in 0 until n) cache.put(i, i)
             cache.clear()
@@ -710,7 +710,7 @@ class LruCacheTest {
     fun testNoMemoryLeaksWithPop() {
         val popCounter = AtomicInt(0)
         val n = 100
-        for (k in 0 until n) {
+        repeat(n) {
             val cache = LruCache<Int, Int>(1)
             for (i in 0 until 100) {
                 cache.put(i, i)
