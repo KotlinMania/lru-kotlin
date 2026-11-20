@@ -1,38 +1,25 @@
 [versions]
-kotlin = "2.4.20"
-coroutines = "1.11.0"
-serialization = "1.11.0"
-datetime = "0.8.0"
-collectionsImmutable = "0.5.2"
+kotlin = "2.4.21"
 androidKmp = "9.4.1"
-vanniktech = "0.37.0"
-detekt = "1.23.8"
+detekt = "2.0.0-alpha.6"
 ktlint = "14.2.0"
+ktlintEngine = "1.8.0"
 kotlinxBenchmark = "0.5.0"
+vanniktech = "0.37.0"
+androidxTestRunner = "1.7.0"
 
 [plugins]
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "androidKmp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 android-kmp = { id = "com.android.kotlin.multiplatform.library", version.ref = "androidKmp" }
-vanniktech = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech" }
-detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinxBenchmark" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
+vanniktech = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech" }
 
 [libraries]
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
-kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "collectionsImmutable" }
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 
 [bundles]
-lru-kotlin-commonMain = [
-  "kotlinx-coroutines-core",
-  "kotlinx-serialization-core",
-  "kotlinx-serialization-json",
-  "kotlinx-datetime",
-  "collections-immutable",
-]
