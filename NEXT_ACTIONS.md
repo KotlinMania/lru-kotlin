@@ -4,14 +4,14 @@ Based on AST analysis, here are the concrete next steps.
 
 ## Summary
 
-- **Files Present:** 1/1 (100.0%)
-- **Function parity:** 99/129 matched (target 113) — 76.7%
-- **Class/type parity:** 5/11 matched (target 9) — 45.5%
-- **Combined symbol parity:** 104/140 matched (target 122) — 74.3%
-- **Average inline-code cosine:** 0.00 (function body across 1 matched files)
-- **Average documentation cosine:** 0.76 (doc text across 1 matched files)
-- **Cheat-zeroed Files:** 1
-- **Critical Issues:** 1 files with <0.60 function similarity
+- **Files Present:** 0/1 (0.0%)
+- **Function parity:** 0/0 matched — N/A
+- **Class/type parity:** 0/0 matched — N/A
+- **Combined symbol parity:** 0/0 matched — N/A
+- **Average inline-code cosine:** 0.00 (function body across 0 matched files)
+- **Average documentation cosine:** 0.00 (doc text across 0 matched files)
+- **Cheat-zeroed Files:** 0
+- **Critical Issues:** 0 files with <0.60 function similarity
 - **Needs Review:** 0 files with 0.60-0.84 function similarity
 - **Excellent:** 0 files with >=0.85 function similarity
 
@@ -29,18 +29,6 @@ No missing high-value files detected.
 
 Every matched file is listed below with function and type symbol parity.
 
-### 1. lib
-
-- **Target:** `lru.LruCache [ZERO]`
-- **Similarity:** 0.00
-- **Dependents:** 0
-- **Priority Score:** 374010.0
-- **Functions:** 99/129 matched (target 113)
-- **Missing functions:** `hash`, `eq`, `from_ref`, `hash`, `eq`, `borrow`, `new`, `new`, `with_hasher`, `unbounded_with_hasher`, `construct`, `drop`, `into_iter`, `into_iter`, `fmt`, `into_iter`, `assert_opt_eq`, `assert_opt_eq_mut`, `assert_opt_eq_tuple`, `assert_opt_eq_mut_tuple`, `test_with_hasher`, `test_send`, `test_multiple_threads`, `test_iter_multiple_threads`, `drop`, `drop`, `drop`, `eq`, `drop`, `_test_lifetimes`
-- **Types:** 5/11 matched (target 9)
-- **Missing types:** `KeyRef`, `KeyWrapper`, `DefaultHasher`, `Item`, `DropCounter`, `KeyDropCounter`
-- **Tests:** 44/57 matched
-
 ## Success Criteria
 
 For each file to be considered "complete":
@@ -49,4 +37,17 @@ For each file to be considered "complete":
 - All tests ported
 - Documentation ported
 - port-lint header present
+
+## Reexport / Wiring Modules
+
+These files match `reexport_modules` patterns in `.ast_distance_config.json`. They are filtered out of
+normal priority and missing-file ladders because they are wiring
+modules, not direct logic ports. Consult them for call-site routing;
+do not treat them as the next implementation target by default.
+
+### Missing
+
+| Source | Expected target | Deps | Source path | Expected path |
+|--------|-----------------|------|-------------|---------------|
+| `lib` | `Lib` | 0 | `lib.rs` | `Lib.kt` |
 

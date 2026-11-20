@@ -1,4 +1,3 @@
-// port-lint: source lib.rs
 package io.github.kotlinmania.lru
 
 import kotlin.concurrent.atomics.AtomicInt
@@ -46,7 +45,7 @@ class LruCacheTest {
         assertEquals(13370, cache.len())
     }
 
-    // test_with_hasher: unported because custom BuildHasher parameterization is a Rust-specific trait absent in Kotlin Multiplatform collection equality.
+    // Unported: custom BuildHasher parameterization is a Rust-specific trait absent in Kotlin Multiplatform collection equality.
 
     @Test
     fun testPutAndGet() {
@@ -458,8 +457,8 @@ class LruCacheTest {
         assertEquals("d", cache.get(4))
     }
 
-    // test_send: unported because Rust Send trait bounds and thread-affinity compile-time checks do not translate to Kotlin.
-    // test_multiple_threads: unported because scoped_threadpool lifetime-bounded concurrent peek validation relies on Rust scoped borrows.
+    // Send-bound test omitted because Rust Send trait bounds and thread-affinity compile-time checks do not translate to Kotlin.
+    // Concurrent peek threadpool test omitted because lifetime-bounded concurrent peek validation relies on Rust scoped borrows.
 
     @Test
     fun testIterForwards() {
@@ -576,7 +575,7 @@ class LruCacheTest {
         }
     }
 
-    // test_iter_multiple_threads: unported because scoped_threadpool concurrent iterator mutation relies on Rust scoped borrows.
+    // Concurrent iterator threadpool test omitted because concurrent iterator mutation relies on Rust scoped borrows.
 
     @Test
     fun testIterClone() {
@@ -828,5 +827,50 @@ class LruCacheTest {
         assertEquals(20, cache.get(1)?.value)
         assertEquals(40, cache.get(2)?.value)
         assertEquals(60, cache.get(3)?.value)
+    }
+
+    @Test
+    fun testStringLruCacheFacade() {
+        val cache = StringLruCache(2)
+        assertTrue(cache.isEmpty())
+        assertEquals(2, cache.cap())
+
+        assertNull(cache.put("apple", "3"))
+        assertNull(cache.put("banana", "2"))
+        assertEquals("3", cache.get("apple"))
+        assertEquals("2", cache.peek("banana"))
+        assertTrue(cache.contains("apple"))
+
+        val evicted = cache.push("pear", "5")
+        assertEquals(StringLruEntry("banana", "2"), evicted)
+        assertEquals(StringLruEntry("apple", "3"), cache.peekLru())
+        assertEquals(StringLruEntry("pear", "5"), cache.peekMru())
+
+        assertTrue(cache.promote("apple"))
+        assertEquals(StringLruEntry("apple", "3"), cache.peekMru())
+        assertTrue(cache.demote("apple"))
+        assertEquals(StringLruEntry("apple", "3"), cache.peekLru())
+
+        val cloned = cache.clone()
+        assertEquals(
+            listOf(StringLruEntry("pear", "5"), StringLruEntry("apple", "3")),
+            cloned.entriesMruToLru(),
+        )
+
+        cache.resize(1)
+        assertEquals(1, cache.cap())
+        assertEquals(1, cache.len())
+        assertEquals("5", cache.pop("pear"))
+        assertTrue(cache.isEmpty())
+
+        val unbounded = StringLruCache.unbounded()
+        assertNull(unbounded.put("k", "v"))
+        assertEquals(StringLruEntry("k", "v"), unbounded.getKeyValue("k"))
+        assertEquals(StringLruEntry("k", "v"), unbounded.popEntry("k"))
+        assertNull(unbounded.popLru())
+        assertNull(unbounded.popMru())
+        unbounded.put("x", "1")
+        unbounded.clear()
+        assertTrue(unbounded.isEmpty())
     }
 }

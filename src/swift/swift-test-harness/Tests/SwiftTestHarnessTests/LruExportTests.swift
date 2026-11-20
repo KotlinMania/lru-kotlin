@@ -1,37 +1,55 @@
 import Testing
 import Lru
 
-// Smoke test for the Kotlin → Swift Export → SPM → swift test pipeline.
-//
-// The file's mere existence and successful compilation prove three layers
-// of the pipeline:
-//
-//   1. `embedSwiftExportForXcode` produced `Lru.swiftmodule/`
-//      and the supporting KotlinRuntimeSupport / ExportedKotlinPackages /
-//      KotlinRuntime swiftmodule bundles. If any of them were missing,
-//      `import Lru` above would fail at compile time.
-//
-//   2. The static archive `libLru.a` (produced by the
-//      `linkSwiftExportBinaryDebugStaticMacosArm64` and
-//      `mergeMacosDebugSwiftExportLibraries` tasks) supplied every
-//      `__root____*` and `KotlinError`-related symbol the Swift modules
-//      reference. If the archive were missing or empty, this test
-//      executable would fail to link with "undefined symbols for
-//      architecture arm64".
-//
-//   3. The Kotlin `swiftExport { moduleName = "Lru" }` and
-//      `flattenPackage = "io.github.kotlinmania.lru"` configuration in
-//      build.gradle.kts produced a module name that's both syntactically
-//      valid as a Swift identifier and reachable from this Package.swift
-//      via the `LruLibrary` product.
-//
-// Add more meaningful per-API tests below as the Swift Export surface
-// grows. For now the import + a single passing assertion is the
-// canary that the pipeline is green for this repo.
 @Suite("Lru Swift Export Tests")
 struct LruExportTests {
-    @Test("Lru swift module imported cleanly")
-    func swiftModuleLoads() {
-        #expect(true)
+    @Test("StringLruCache put, get, eviction, and peek operations behave identically across Swift Export")
+    func putGetAndEvict() {
+        let cache = StringLruCache(cap: 2)
+        #expect(cache.isEmpty())
+        #expect(cache.cap() == 2)
+
+        #expect(cache.put(key: "apple", value: "3") == nil)
+        #expect(cache.put(key: "banana", value: "2") == nil)
+        #expect(cache.len() == 2)
+        #expect(cache.get(key: "apple") == "3")
+        #expect(cache.get(key: "banana") == "2")
+        #expect(cache.get(key: "pear") == nil)
+
+        #expect(cache.put(key: "banana", value: "4") == "2")
+        let evicted = cache.push(key: "pear", value: "5")
+        #expect(evicted?.key == "apple")
+        #expect(evicted?.value == "3")
+        #expect(cache.contains(key: "apple") == false)
+        #expect(cache.peekLru()?.key == "banana")
+        #expect(cache.peekMru()?.key == "pear")
+    }
+
+    @Test("StringLruCache pop, promote, demote, resize, clone, and unbounded")
+    func popPromoteResizeAndUnbounded() {
+        let cache = StringLruCache(cap: 3)
+        _ = cache.put(key: "a", value: "1")
+        _ = cache.put(key: "b", value: "2")
+        _ = cache.put(key: "c", value: "3")
+
+        #expect(cache.promote(key: "a") == true)
+        #expect(cache.peekMru()?.key == "a")
+        #expect(cache.demote(key: "a") == true)
+        #expect(cache.peekLru()?.key == "a")
+
+        let cloned = cache.clone()
+        #expect(cloned.entriesMruToLru().map(\.key) == ["c", "b", "a"])
+
+        cache.resize(cap: 1)
+        #expect(cache.cap() == 1)
+        #expect(cache.len() == 1)
+        #expect(cache.pop(key: "c") == "3")
+        #expect(cache.isEmpty())
+
+        let unbounded = StringLruCache.Companion.shared.unbounded()
+        _ = unbounded.put(key: "k", value: "v")
+        #expect(unbounded.get(key: "k") == "v")
+        unbounded.clear()
+        #expect(unbounded.isEmpty())
     }
 }

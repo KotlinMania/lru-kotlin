@@ -1,4 +1,3 @@
-// port-lint: source lib.rs
 @file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
 
 package io.github.kotlinmania.lru
@@ -979,7 +978,7 @@ class LruCache<K : Any, V : Any> private constructor(
          * val cache = LruCache.unbounded<Long, String>()
          * ```
          */
-        internal fun <K : Any, V : Any> unbounded(): LruCache<K, V> = LruCache(Int.MAX_VALUE, HashMap())
+        fun <K : Any, V : Any> unbounded(): LruCache<K, V> = LruCache(Int.MAX_VALUE, HashMap())
 
         private fun requirePositive(cap: Int): Int {
             require(cap > 0) { "capacity must be > 0, got $cap" }
