@@ -840,7 +840,7 @@ class LruCache<K : Any, V : Any> private constructor(
      * ```
      */
     fun clear() {
-        while (popLru() != null) { }
+        while (popLru() != null) continue
     }
 
     /**
